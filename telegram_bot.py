@@ -465,6 +465,7 @@ def main():
     # Escribir tokens de Google desde env vars si estamos en un servidor
     _write_token_from_env("GOOGLE_DRIVE_TOKEN_JSON",    os.getenv("GOOGLE_DRIVE_TOKEN_PATH", "google_drive_token.json"))
     _write_token_from_env("GOOGLE_CALENDAR_TOKEN_JSON", os.getenv("GOOGLE_TOKEN_PATH", "google_token.json"))
+    _write_token_from_env("GOOGLE_CREDENTIALS_JSON",    os.getenv("GOOGLE_CREDENTIALS_PATH", "google_credentials.json"))
 
     log.info(f"Iniciando bot de Telegram para {FRANCO_NAME}...")
 
