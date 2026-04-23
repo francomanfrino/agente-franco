@@ -1,0 +1,32 @@
+# Core UI
+PyQt6>=6.6.0
+
+# Data processing
+pandas>=2.1.0
+openpyxl>=3.1.2
+xlrd>=2.0.1
+
+# Fuzzy matching (pick one; rapidfuzz is faster)
+rapidfuzz>=3.5.0
+# fuzzywuzzy>=0.18.0
+# python-Levenshtein>=0.23.0
+
+# PDF generation
+reportlab>=4.0.0
+
+# Email
+yagmail>=0.15.293
+# smtplib is stdlib
+
+# WhatsApp (optional, comment out if not needed)
+# twilio>=8.0.0
+
+# Backup encryption (optional)
+# pyminizip>=0.2.6
+
+# Packaging
+pyinstaller>=6.3.0
+
+# Dev / testing
+pytest>=7.4.0
+pytest-qt>=4.2.0

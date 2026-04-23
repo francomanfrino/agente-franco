@@ -1,0 +1,434 @@
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font-sans)}
+h2{font-size:18px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.subtitle{font-size:13px;color:var(--color-text-secondary);margin-bottom:16px}
+.tabs{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:16px}
+.tab{padding:6px 14px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary)}
+.tab.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500;border-color:var(--color-border-primary)}
+.panel{display:none}.panel.active{display:block}
+.search-wrap{margin-bottom:12px}
+input[type=text]{width:100%;padding:7px 10px;font-size:13px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);background:var(--color-background-primary);color:var(--color-text-primary)}
+table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+th{background:var(--color-background-secondary);color:var(--color-text-secondary);font-weight:500;padding:7px 6px;text-align:right;border-bottom:0.5px solid var(--color-border-tertiary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+th:first-child{text-align:left;width:140px}
+td{padding:6px 6px;text-align:right;border-bottom:0.5px solid var(--color-border-tertiary);color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+td:first-child{text-align:left;color:var(--color-text-secondary);font-size:11px}
+tr:hover td{background:var(--color-background-secondary)}
+.interior td:first-child{padding-left:16px;font-style:italic}
+.badge{display:inline-block;font-size:10px;padding:2px 7px;border-radius:var(--border-radius-md);margin-right:4px}
+.b-fab{background:var(--color-background-info);color:var(--color-text-info)}
+.b-rep{background:var(--color-background-success);color:var(--color-text-success)}
+.note{font-size:12px;color:var(--color-text-secondary);margin-top:10px;padding:8px 10px;border-left:2px solid var(--color-border-secondary);border-radius:0}
+.scroll{overflow-x:auto}
+.plazo-header{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.plazo-btn{padding:5px 12px;font-size:12px;border:0.5px solid var(--color-border-secondary);border-radius:var(--border-radius-md);cursor:pointer;background:var(--color-background-primary);color:var(--color-text-secondary)}
+.plazo-btn.active{background:var(--color-background-secondary);color:var(--color-text-primary);font-weight:500}
+</style>
+
+<div style="padding:1rem 0">
+<h2>Listas de precios — Pilar <span style="font-size:13px;font-weight:400;color:var(--color-text-secondary)">07/01/2026</span></h2>
+<p class="subtitle">5 listas: equipos completos (fábrica → cliente) · reparto GBA/mixto · azúcar 50kg · azúcar 1kg · azúcar 25kg</p>
+
+<div class="tabs">
+  <button class="tab active" onclick="showTab('equipos')">📦 Equipos completos</button>
+  <button class="tab" onclick="showTab('reparto')">🚛 Reparto GBA/Mixto</button>
+  <button class="tab" onclick="showTab('az50')">🍬 Azúcar 50kg</button>
+  <button class="tab" onclick="showTab('az1')">🍬 Azúcar 1kg</button>
+  <button class="tab" onclick="showTab('az25')">🍬 Azúcar 25kg</button>
+</div>
+
+<!-- PANEL 1: EQUIPOS COMPLETOS -->
+<div class="panel active" id="panel-equipos">
+  <p class="subtitle"><span class="badge b-fab">Fábrica → Cliente</span> Precio por unidad. Costo + insumos + fasón + flete directo al cliente.</p>
+  <div class="search-wrap"><input type="text" placeholder="Buscar provincia..." oninput="filtrar('equipos',this.value)"></div>
+  <div class="scroll">
+  <table id="t-equipos">
+    <thead><tr>
+      <th>Provincia</th>
+      <th>Az 1kg</th><th>Az 50kg</th><th>Az 25kg</th>
+      <th>Harina 1kg</th><th>Leche E 1L</th><th>Leche D 1L</th>
+      <th>Ac 900</th><th>Ac 1,5L</th><th>Ac 4L</th><th>Ac 5L</th>
+      <th>Arroz 4/0</th><th>Arroz 5/0</th><th>Yerba 500g</th>
+    </tr></thead>
+    <tbody id="tb-equipos"></tbody>
+  </table>
+  </div>
+  <p class="note">Bolsa al piso 50kg: Bs.As. $40.333 · Tucumán $37.418</p>
+</div>
+
+<!-- PANEL 2: REPARTO GBA/MIXTO -->
+<div class="panel" id="panel-reparto">
+  <p class="subtitle"><span class="badge b-rep">Depósito → Cliente</span> Incluye flete fábrica→depósito + depósito→cliente. 4 opciones según cantidad de paradas.</p>
+  <div class="plazo-header">
+    <span style="font-size:12px;color:var(--color-text-secondary);padding-top:4px">Paradas:</span>
+    <button class="plazo-btn active" onclick="setParada(1,this)">1 parada</button>
+    <button class="plazo-btn" onclick="setParada(2,this)">2 paradas</button>
+    <button class="plazo-btn" onclick="setParada(3,this)">3 paradas</button>
+    <button class="plazo-btn" onclick="setParada(4,this)">4 paradas</button>
+  </div>
+  <div class="search-wrap"><input type="text" placeholder="Buscar provincia..." oninput="filtrar('reparto',this.value)"></div>
+  <div class="scroll">
+  <table id="t-reparto">
+    <thead><tr>
+      <th>Provincia</th>
+      <th>Az 1kg</th><th>Az 50kg</th><th>Az 25kg</th>
+      <th>Harina 1kg</th><th>Leche E 1L</th><th>Leche D 1L</th>
+      <th>Ac 900</th><th>Ac 1,5L</th><th>Ac 4L</th><th>Ac 5L</th>
+      <th>Arroz 4/0</th><th>Arroz 5/0</th><th>Yerba 500g</th>
+    </tr></thead>
+    <tbody id="tb-reparto"></tbody>
+  </table>
+  </div>
+  <p class="note">Precio reparto GBA (base): Az 1kg $1.000 · Az 50kg $45.276 · Az 25kg $23.758 · Harina $649 · Leche $1.247 · Aceite 900 $2.133 · Aceite 5L $11.096</p>
+</div>
+
+<!-- PANEL 3: AZÚCAR 50KG FACTURADA -->
+<div class="panel" id="panel-az50">
+  <p class="subtitle"><span class="badge b-fab">Venta facturada</span> Azúcar 50kg desde Tucumán. Precio según plazo de pago.</p>
+  <div class="plazo-header">
+    <span style="font-size:12px;color:var(--color-text-secondary);padding-top:4px">Plazo:</span>
+    <button class="plazo-btn active" onclick="setPlazo50(0,this)">Al día</button>
+    <button class="plazo-btn" onclick="setPlazo50(1,this)">7 días</button>
+    <button class="plazo-btn" onclick="setPlazo50(2,this)">30 días</button>
+    <button class="plazo-btn" onclick="setPlazo50(3,this)">60 días</button>
+  </div>
+  <div class="search-wrap"><input type="text" placeholder="Buscar provincia..." oninput="filtrar('az50',this.value)"></div>
+  <div class="scroll">
+  <table id="t-az50">
+    <thead><tr><th>Destino</th><th>Transp. x bolsa</th><th>Total flete</th><th>Precio venta</th></tr></thead>
+    <tbody id="tb-az50"></tbody>
+  </table>
+  </div>
+  <p class="note">Costo bolsa 50kg: $36.000 (día) · $36.700 (7d) · $37.500 (30d) · $40.000 (60d) · Descuentos: -10% al día · -7% a 7 días · -5% a 30 días · Sin dto 60 días · Paletizado: $800+IVA adicional</p>
+</div>
+
+<!-- PANEL 4: AZÚCAR 1KG FACTURADA -->
+<div class="panel" id="panel-az1">
+  <p class="subtitle"><span class="badge b-fab">Venta facturada</span> Azúcar 1kg (fraccionado) desde Tucumán. Precio según plazo de pago.</p>
+  <div class="plazo-header">
+    <span style="font-size:12px;color:var(--color-text-secondary);padding-top:4px">Plazo:</span>
+    <button class="plazo-btn active" onclick="setPlazo1(0,this)">Al día</button>
+    <button class="plazo-btn" onclick="setPlazo1(1,this)">7 días</button>
+    <button class="plazo-btn" onclick="setPlazo1(2,this)">30 días</button>
+    <button class="plazo-btn" onclick="setPlazo1(3,this)">60 días</button>
+  </div>
+  <div class="search-wrap"><input type="text" placeholder="Buscar provincia..." oninput="filtrar('az1',this.value)"></div>
+  <div class="scroll">
+  <table id="t-az1">
+    <thead><tr><th>Destino</th><th>Flete x bolsa (sin IVA)</th><th>Total flete</th><th>Precio/kg</th></tr></thead>
+    <tbody id="tb-az1"></tbody>
+  </table>
+  </div>
+  <p class="note">Base: bolsa 50kg = costo del kg · Descuentos: -10% al día · -7% a 15 días · -5% a 30 días · Sin dto 60 días · Solo equipo completo para Buenos Aires</p>
+</div>
+
+<!-- PANEL 5: AZÚCAR 25KG FACTURADA -->
+<div class="panel" id="panel-az25">
+  <p class="subtitle"><span class="badge b-fab">Venta facturada</span> Azúcar 25kg (fraccionado) desde Tucumán. Precio según plazo de pago.</p>
+  <div class="plazo-header">
+    <span style="font-size:12px;color:var(--color-text-secondary);padding-top:4px">Plazo:</span>
+    <button class="plazo-btn active" onclick="setPlazo25(0,this)">Al día</button>
+    <button class="plazo-btn" onclick="setPlazo25(1,this)">7 días</button>
+    <button class="plazo-btn" onclick="setPlazo25(2,this)">30 días</button>
+    <button class="plazo-btn" onclick="setPlazo25(3,this)">60 días</button>
+  </div>
+  <div class="search-wrap"><input type="text" placeholder="Buscar provincia..." oninput="filtrar('az25',this.value)"></div>
+  <div class="scroll">
+  <table id="t-az25">
+    <thead><tr><th>Destino</th><th>Flete x bolsa (sin IVA)</th><th>Total flete</th><th>Precio 25kg</th></tr></thead>
+    <tbody id="tb-az25"></tbody>
+  </table>
+  </div>
+  <p class="note">Descuentos: -10% al día · -7% a 15 días · -5% a 30 días · Sin dto 60 días</p>
+</div>
+
+</div>
+
+<script>
+const fmt = n => '$' + Math.round(n).toLocaleString('es-AR');
+
+// DATA EQUIPOS COMPLETOS (hoja 1)
+const equipos = [
+  {p:'Jujuy',c:[890,40008,21079,634,1182,1182,2030,3259,8464,10357,798,819,1008]},
+  {p:'Jujuy INTERIOR',c:[901,40545,21348,646,1193,1193,2040,3269,8475,10368,808,829,1019],i:1},
+  {p:'Salta',c:[886,39766,20958,634,1182,1182,2030,3259,8464,10357,798,819,1008]},
+  {p:'Salta INTERIOR',c:[896,40304,21227,646,1193,1193,2040,3269,8475,10368,808,829,1019],i:1},
+  {p:'Formosa',c:[911,41047,21599,616,1166,1166,2015,3243,8449,10342,782,803,992]},
+  {p:'Formosa INTERIOR',c:[922,41585,21867,628,1177,1177,2025,3254,8459,10352,793,814,1003],i:1},
+  {p:'Misiones',c:[923,41638,21894,616,1166,1166,2015,3243,8449,10342,782,803,931]},
+  {p:'Misiones INTERIOR',c:[934,42176,22163,628,1177,1177,2025,3254,8459,10352,793,814,942],i:1},
+  {p:'Tucumán',c:[860,38485,20318,616,1166,1166,2015,3243,8449,10342,782,803,992]},
+  {p:'Tucumán INTERIOR',c:[867,38843,20497,624,1174,1174,2022,3250,8456,10349,789,810,999],i:1},
+  {p:'Chaco',c:[903,40653,21401,611,1163,1163,2012,3239,8445,10338,778,799,984]},
+  {p:'Chaco INTERIOR',c:[914,41190,21670,624,1173,1173,2022,3250,8455,10348,789,810,995],i:1},
+  {p:'Santiago del Estero',c:[880,39470,20810,614,1165,1165,2014,3241,8447,10340,780,801,990]},
+  {p:'Santiago del Estero INT.',c:[887,39829,20989,622,1172,1172,2020,3248,8454,10347,787,808,997],i:1},
+  {p:'Corrientes',c:[919,41441,21796,611,1163,1163,2012,3239,8445,10338,778,799,968]},
+  {p:'Corrientes INTERIOR',c:[930,41979,22064,624,1173,1173,2022,3250,8455,10348,789,810,979],i:1},
+  {p:'Catamarca',c:[880,39470,20810,620,1170,1170,2019,3247,8453,10346,786,807,1004]},
+  {p:'Catamarca INTERIOR',c:[898,40366,21258,641,1188,1188,2035,3265,8470,10363,804,825,1023],i:1},
+  {p:'La Rioja',c:[894,40160,21155,616,1166,1166,2015,3243,8449,10342,782,803,1016]},
+  {p:'La Rioja INTERIOR',c:[911,41056,21603,636,1185,1185,2032,3261,8467,10360,800,821,1035],i:1},
+  {p:'Santa Fe',c:[907,40850,21500,587,1141,1141,1992,3217,8423,10316,757,778,966]},
+  {p:'Santa Fe INTERIOR',c:[914,41208,21679,595,1148,1148,1999,3224,8430,10323,764,785,973],i:1},
+  {p:'San Juan',c:[907,40850,21500,607,1159,1159,2008,3235,8441,10334,775,796,984]},
+  {p:'San Juan INTERIOR',c:[925,41746,21948,627,1177,1177,2025,3253,8459,10352,792,813,1002],i:1},
+  {p:'Córdoba',c:[903,40653,21401,607,1159,1159,2008,3235,8441,10334,775,796,984]},
+  {p:'Córdoba INTERIOR',c:[914,41190,21670,619,1169,1169,2018,3246,8451,10344,785,806,995],i:1},
+  {p:'Entre Ríos',c:[909,40949,21549,594,1147,1147,1997,3223,8429,10322,763,784,972]},
+  {p:'Entre Ríos INTERIOR',c:[920,41486,21818,606,1157,1157,2007,3234,8440,10333,774,795,983],i:1},
+  {p:'San Luis',c:[907,40850,21500,607,1159,1159,2008,3235,8441,10334,775,796,1016]},
+  {p:'San Luis INTERIOR',c:[918,41388,21769,619,1169,1169,2018,3246,8451,10344,785,806,1028],i:1},
+  {p:'Mendoza',c:[909,40949,21549,605,1157,1157,2006,3233,8439,10332,773,794,982]},
+  {p:'Mendoza INTERIOR',c:[927,41844,21997,625,1175,1175,2023,3251,8457,10350,790,811,1000],i:1},
+  {p:'La Pampa',c:[928,41889,22020,598,1150,1150,2001,3227,8432,10325,767,788,983]},
+  {p:'La Pampa INTERIOR',c:[946,42785,22468,618,1168,1168,2017,3245,8450,10343,784,805,1001],i:1},
+  {p:'Buenos Aires',c:[919,41441,21796,574,1129,1129,1981,3205,8411,10304,746,767,992]},
+  {p:'Buenos Aires INTERIOR',c:[937,42337,22244,594,1147,1147,1998,3223,8429,10322,763,784,1011],i:1},
+  {p:'Neuquén',c:[998,45383,23766,625,1174,1174,2023,3251,8456,10349,790,811,1000]},
+  {p:'Neuquén INTERIOR',c:[1016,46279,24214,645,1192,1192,2039,3269,8474,10367,807,828,1019],i:1},
+  {p:'Río Negro',c:[959,43412,22781,638,1186,1186,2034,3263,8468,10361,802,823,1114]},
+  {p:'Río Negro INTERIOR',c:[976,44308,23229,658,1204,1204,2050,3281,8486,10379,819,840,1133],i:1},
+  {p:'Chubut',c:[998,45383,23766,780,1313,1313,2149,3389,8594,10487,925,946,1143]},
+  {p:'Chubut INTERIOR',c:[1016,46279,24214,826,1331,1331,2165,3407,8612,10505,942,963,1161],i:1},
+  {p:'Santa Cruz',c:[1128,51887,27018,794,1325,1325,2160,3401,8606,10499,936,957,1135]},
+  {p:'Santa Cruz INTERIOR',c:[1146,52783,27466,840,1343,1343,2176,3419,8624,10517,954,975,1153],i:1}
+];
+
+// DATA REPARTO por paradas
+const repartoData = [
+  {p:'Buenos Aires',c:[[1000,45276,23758,649,1247,1247,2133,3472,9062,11096,833,855,1064],[986,44697,23448,654,1209,1209,2082,3513,8845,10830,838,860,1021],[977,44238,23219,643,1197,1197,2071,3493,8798,10773,827,849,1014],[973,44009,23105,638,1191,1191,2065,3483,8774,10744,821,843,1010]]},
+];
+
+// Para reparto usamos la hoja de "EQUIPO MIXTO DESDE GBA" para todo el país
+const mixto = [
+  {p:'Jujuy',c:[980,44555,23338,639,1187,1187,2031,3295,8630,10565,822,843,1042]},
+  {p:'Jujuy INTERIOR',c:[null,null,null,648,1198,1198,2040,3312,8673,10616,833,854,1049],i:1},
+  {p:'Salta',c:[980,44555,23338,639,1187,1187,2031,3295,8630,10565,822,843,1042]},
+  {p:'Salta INTERIOR',c:[null,null,null,648,1198,1198,2040,3312,8673,10616,833,854,1049],i:1},
+  {p:'Formosa',c:[965,43778,22949,625,1172,1172,2016,3270,8568,10490,806,827,1031]},
+  {p:'Formosa INTERIOR',c:[null,null,null,634,1182,1182,2026,3287,8610,10541,817,838,1038],i:1},
+  {p:'Misiones',c:[null,null,null,625,1172,1172,2016,3270,8568,10490,806,827,1031]},
+  {p:'Misiones INTERIOR',c:[null,null,null,634,1182,1182,2026,3287,8610,10541,817,838,1038],i:1},
+  {p:'Tucumán',c:[null,null,null,625,1172,1172,2016,3270,8568,10490,806,827,1031]},
+  {p:'Tucumán INTERIOR',c:[null,null,null,631,1179,1179,2023,3281,8596,10524,813,834,1036],i:1},
+  {p:'Chaco',c:[null,null,null,622,1168,1168,2013,3263,8552,10471,802,823,1029]},
+  {p:'Chaco INTERIOR',c:[null,null,null,631,1179,1179,2023,3281,8595,10522,813,834,1036],i:1},
+  {p:'Santiago del Estero',c:[963,43681,22900,623,1170,1170,2015,3267,8560,10481,804,825,1030]},
+  {p:'Santiago del Estero INT.',c:[null,null,null,629,1177,1177,2021,3278,8588,10515,811,832,1035],i:1},
+  {p:'Corrientes',c:[961,43584,22852,622,1168,1168,2013,3263,8552,10471,802,823,1029]},
+  {p:'Corrientes INTERIOR',c:[null,null,null,631,1179,1179,2023,3281,8595,10522,813,834,1036],i:1},
+  {p:'Catamarca',c:[968,43972,23046,628,1176,1176,2020,3276,8583,10509,810,831,1034]},
+  {p:'Catamarca INTERIOR',c:[null,null,null,644,1193,1193,2036,3305,8654,10594,828,849,1046],i:1},
+  {p:'La Rioja',c:[965,43778,22949,625,1172,1172,2016,3270,8568,10490,806,827,1031]},
+  {p:'La Rioja INTERIOR',c:[null,null,null,640,1190,1190,2033,3298,8639,10575,824,845,1043],i:1},
+  {p:'Santa Fe',c:[939,42515,22317,603,1146,1146,1993,3229,8466,10368,780,801,1014]},
+  {p:'Santa Fe INTERIOR',c:[null,null,null,609,1153,1153,2000,3240,8494,10402,787,808,1019],i:1},
+  {p:'San Juan',c:[957,43389,22755,618,1164,1164,2009,3257,8536,10452,798,819,1026]},
+  {p:'San Juan INTERIOR',c:[null,null,null,634,1182,1182,2025,3286,8607,10538,816,837,1038],i:1},
+  {p:'Córdoba',c:[957,43389,22755,618,1164,1164,2009,3257,8536,10452,798,819,1026]},
+  {p:'Córdoba INTERIOR',c:[null,null,null,627,1175,1175,2019,3274,8579,10504,809,830,1033],i:1},
+  {p:'Entre Ríos',c:[945,42806,22463,608,1152,1152,1998,3238,8489,10396,786,807,1018]},
+  {p:'Entre Ríos INTERIOR',c:[null,null,null,617,1163,1163,2008,3255,8532,10447,797,818,1025],i:1},
+  {p:'San Luis',c:[957,43389,22755,618,1164,1164,2009,3257,8536,10452,798,819,1026]},
+  {p:'San Luis INTERIOR',c:[null,null,null,627,1175,1175,2019,3274,8579,10504,809,830,1033],i:1},
+  {p:'Mendoza',c:[955,43292,22706,616,1162,1162,2007,3254,8528,10443,796,817,1025]},
+  {p:'Mendoza INTERIOR',c:[null,null,null,632,1180,1180,2024,3283,8600,10528,814,835,1037],i:1},
+  {p:'La Pampa',c:[949,42983,22552,611,1156,1156,2002,3244,8504,10413,789,810,1021]},
+  {p:'La Pampa INTERIOR',c:[null,null,null,626,1174,1174,2018,3273,8575,10498,808,829,1032],i:1},
+  {p:'Buenos Aires',c:[941,42525,22338,592,1135,1135,1982,3210,8419,10312,768,789,1006]},
+  {p:'Buenos Aires INTERIOR',c:[932,42815,22468,608,1152,1152,1999,3239,8490,10397,786,807,1018],i:1},
+  {p:'Neuquén',c:[972,44167,23143,632,1180,1180,2024,3282,8599,10527,814,835,1036]},
+  {p:'Neuquén INTERIOR',c:[null,null,null,647,1197,1197,2040,3311,8670,10613,832,853,1048],i:1},
+  {p:'Río Negro',c:[984,44750,23435,642,1191,1191,2034,3301,8646,10584,826,847,1044]},
+  {p:'Río Negro INTERIOR',c:[null,null,null,658,1209,1209,2051,3330,8717,10669,844,865,1056],i:1},
+  {p:'Chubut',c:[null,null,null,751,1317,1317,2149,3502,9146,11185,954,975,1128]},
+  {p:'Chubut INTERIOR',c:[null,null,null,786,1356,1356,2185,3567,9306,11376,995,1016,1154],i:1},
+  {p:'Santa Cruz',c:[1120,51551,26836,762,1328,1328,2159,3521,9193,11241,966,987,1136]},
+  {p:'Santa Cruz INTERIOR',c:[null,null,null,797,1369,1369,2197,3587,9358,11438,1008,1029,1163],i:1}
+];
+
+// AZÚCAR 50KG por destino (plazo: 0=día,1=7d,2=30d,3=60d)
+const az50 = [
+  {d:'Jujuy',f:1417,ft:1565,p:[33400,34022,34733,37119]},
+  {d:'Salta',f:1192,ft:1317,p:[33175,33797,34508,36894]},
+  {d:'Formosa',f:2383,ft:2634,p:[34367,34989,35699,38086]},
+  {d:'Misiones',f:2933,ft:3241,p:[34917,35539,36249,38636]},
+  {d:'Tucumán',f:0,ft:0,p:[31983,32605,33316,35702]},
+  {d:'Chaco',f:2017,ft:2228,p:[34000,34622,35333,37719]},
+  {d:'Santiago del Estero',f:917,ft:1013,p:[32900,33522,34233,36619]},
+  {d:'Corrientes',f:2750,ft:3039,p:[34733,35355,36066,38452]},
+  {d:'Catamarca',f:917,ft:1013,p:[32900,33522,34233,36619]},
+  {d:'La Rioja',f:1558,ft:1722,p:[33542,34164,34874,37261]},
+  {d:'Santa Fe',f:2200,ft:2431,p:[34183,34805,35516,37902]},
+  {d:'San Juan',f:2200,ft:2431,p:[34183,34805,35516,37902]},
+  {d:'Córdoba',f:2017,ft:2228,p:[34000,34622,35333,37719]},
+  {d:'Entre Ríos',f:2292,ft:2532,p:[34275,34897,35608,37994]},
+  {d:'San Luis',f:2200,ft:2431,p:[34183,34805,35516,37902]},
+  {d:'Mendoza',f:2292,ft:2532,p:[34275,34897,35608,37994]},
+  {d:'La Pampa',f:3167,ft:3499,p:[35150,35772,36483,38869]},
+  {d:'Buenos Aires',f:2750,ft:3039,p:[34733,35355,36066,38452]},
+  {d:'Neuquén',f:6417,ft:7090,p:[38400,39022,39733,42119]},
+  {d:'Río Negro',f:4583,ft:5065,p:[36567,37189,37899,40286]},
+  {d:'Chubut',f:6417,ft:7090,p:[38400,39022,39733,42119]},
+  {d:'Santa Cruz',f:12467,ft:13776,p:[44450,45072,45783,48169]}
+];
+
+// AZÚCAR 1KG por destino
+const az1 = [
+  {d:'Jujuy',f:1417,ft:1565,p:[753,769,783,835]},
+  {d:'Salta',f:1192,ft:1317,p:[749,765,779,831]},
+  {d:'Formosa',f:2383,ft:2634,p:[772,788,803,855]},
+  {d:'Misiones',f:2933,ft:3241,p:[783,799,814,866]},
+  {d:'Tucumán',f:0,ft:0,p:[725,741,755,807]},
+  {d:'Chaco',f:2017,ft:2228,p:[765,781,795,847]},
+  {d:'Santiago del Estero',f:917,ft:1013,p:[743,759,773,825]},
+  {d:'Corrientes',f:2750,ft:3039,p:[780,796,810,862]},
+  {d:'Catamarca',f:917,ft:1013,p:[743,759,773,825]},
+  {d:'La Rioja',f:1558,ft:1722,p:[756,772,786,838]},
+  {d:'Santa Fe',f:2200,ft:2431,p:[769,785,799,851]},
+  {d:'San Juan',f:2200,ft:2431,p:[769,785,799,851]},
+  {d:'Córdoba',f:2017,ft:2228,p:[765,781,795,847]},
+  {d:'Entre Ríos',f:2292,ft:2532,p:[771,787,801,853]},
+  {d:'San Luis',f:2200,ft:2431,p:[769,785,799,851]},
+  {d:'Mendoza',f:2292,ft:2532,p:[771,787,801,853]},
+  {d:'La Pampa',f:3167,ft:3499,p:[788,804,818,870]},
+  {d:'Buenos Aires',f:2750,ft:3039,p:[780,796,810,862]},
+  {d:'Neuquén',f:6417,ft:7090,p:[853,869,883,935]},
+  {d:'Río Negro',f:4583,ft:5065,p:[816,832,847,899]},
+  {d:'Chubut',f:6417,ft:7090,p:[853,869,883,935]},
+  {d:'Santa Cruz',f:12467,ft:13776,p:[974,990,1004,1056]}
+];
+
+// AZÚCAR 25KG por destino
+const az25 = [
+  {d:'Jujuy',f:1417,ft:1565,p:[17935,18336,18693,19986]},
+  {d:'Salta',f:1192,ft:1317,p:[17822,18224,18581,19874]},
+  {d:'Formosa',f:2383,ft:2634,p:[18418,18820,19177,20469]},
+  {d:'Misiones',f:2933,ft:3241,p:[18693,19095,19452,20744]},
+  {d:'Tucumán',f:0,ft:0,p:[17226,17628,17985,19278]},
+  {d:'Chaco',f:2017,ft:2228,p:[18235,18636,18993,20286]},
+  {d:'Santiago del Estero',f:917,ft:1013,p:[17685,18086,18443,19736]},
+  {d:'Corrientes',f:2750,ft:3039,p:[18601,19003,19360,20653]},
+  {d:'Catamarca',f:917,ft:1013,p:[17685,18086,18443,19736]},
+  {d:'La Rioja',f:1558,ft:1722,p:[18006,18407,18764,20057]},
+  {d:'Santa Fe',f:2200,ft:2431,p:[18326,18728,19085,20378]},
+  {d:'San Juan',f:2200,ft:2431,p:[18326,18728,19085,20378]},
+  {d:'Córdoba',f:2017,ft:2228,p:[18235,18636,18993,20286]},
+  {d:'Entre Ríos',f:2292,ft:2532,p:[18372,18774,19131,20424]},
+  {d:'San Luis',f:2200,ft:2431,p:[18326,18728,19085,20378]},
+  {d:'Mendoza',f:2292,ft:2532,p:[18372,18774,19131,20424]},
+  {d:'La Pampa',f:3167,ft:3499,p:[18810,19211,19568,20861]},
+  {d:'Buenos Aires',f:2750,ft:3039,p:[18601,19003,19360,20653]},
+  {d:'Neuquén',f:6417,ft:7090,p:[20435,20836,21193,22486]},
+  {d:'Río Negro',f:4583,ft:5065,p:[19518,19920,20277,21569]},
+  {d:'Chubut',f:6417,ft:7090,p:[20435,20836,21193,22486]},
+  {d:'Santa Cruz',f:12467,ft:13776,p:[23460,23861,24218,25511]}
+];
+
+let curParada = 0;
+let curPlazo50 = 0, curPlazo1 = 0, curPlazo25 = 0;
+
+function renderEquipos(filter='') {
+  const tb = document.getElementById('tb-equipos');
+  tb.innerHTML = equipos.filter(r=>r.p.toLowerCase().includes(filter.toLowerCase())).map(r=>`
+    <tr class="${r.i?'interior':''}">
+      <td>${r.p}</td>
+      ${r.c.map(v=>`<td>${fmt(v)}</td>`).join('')}
+    </tr>`).join('');
+}
+
+function renderReparto(filter='') {
+  const tb = document.getElementById('tb-reparto');
+  const src = curParada === 0 ? null : null; // usar mixto para todas las provincias
+  tb.innerHTML = mixto.filter(r=>r.p.toLowerCase().includes(filter.toLowerCase())).map(r=>`
+    <tr class="${r.i?'interior':''}">
+      <td>${r.p}</td>
+      ${r.c.map(v=>v===null?'<td style="color:var(--color-text-secondary)">—</td>':`<td>${fmt(v)}</td>`).join('')}
+    </tr>`).join('');
+}
+
+function renderAz50(filter='') {
+  const tb = document.getElementById('tb-az50');
+  tb.innerHTML = az50.filter(r=>r.d.toLowerCase().includes(filter.toLowerCase())).map(r=>`
+    <tr>
+      <td>${r.d}</td>
+      <td>${fmt(r.f)}</td>
+      <td>${fmt(r.ft)}</td>
+      <td style="font-weight:500;color:var(--color-text-primary)">${fmt(r.p[curPlazo50])}</td>
+    </tr>`).join('');
+}
+
+function renderAz1(filter='') {
+  const tb = document.getElementById('tb-az1');
+  tb.innerHTML = az1.filter(r=>r.d.toLowerCase().includes(filter.toLowerCase())).map(r=>`
+    <tr>
+      <td>${r.d}</td>
+      <td>${fmt(r.f)}</td>
+      <td>${fmt(r.ft)}</td>
+      <td style="font-weight:500;color:var(--color-text-primary)">${fmt(r.p[curPlazo1])}</td>
+    </tr>`).join('');
+}
+
+function renderAz25(filter='') {
+  const tb = document.getElementById('tb-az25');
+  tb.innerHTML = az25.filter(r=>r.d.toLowerCase().includes(filter.toLowerCase())).map(r=>`
+    <tr>
+      <td>${r.d}</td>
+      <td>${fmt(r.f)}</td>
+      <td>${fmt(r.ft)}</td>
+      <td style="font-weight:500;color:var(--color-text-primary)">${fmt(r.p[curPlazo25])}</td>
+    </tr>`).join('');
+}
+
+function showTab(id) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  event.target.classList.add('active');
+}
+
+function filtrar(tipo, val) {
+  if(tipo==='equipos') renderEquipos(val);
+  else if(tipo==='reparto') renderReparto(val);
+  else if(tipo==='az50') renderAz50(val);
+  else if(tipo==='az1') renderAz1(val);
+  else if(tipo==='az25') renderAz25(val);
+}
+
+function setParada(n, btn) {
+  curParada = n-1;
+  document.querySelectorAll('#panel-reparto .plazo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderReparto();
+}
+
+function setPlazo50(n, btn) {
+  curPlazo50 = n;
+  document.querySelectorAll('#panel-az50 .plazo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAz50();
+}
+
+function setPlazo1(n, btn) {
+  curPlazo1 = n;
+  document.querySelectorAll('#panel-az1 .plazo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAz1();
+}
+
+function setPlazo25(n, btn) {
+  curPlazo25 = n;
+  document.querySelectorAll('#panel-az25 .plazo-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAz25();
+}
+
+renderEquipos();
+renderReparto();
+renderAz50();
+renderAz1();
+renderAz25();
+</script>

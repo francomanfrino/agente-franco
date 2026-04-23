@@ -1,0 +1,17 @@
+anthropic>=0.40.0
+google-auth>=2.23.0
+google-auth-oauthlib>=1.1.0
+google-api-python-client>=2.100.0
+reportlab>=4.0.0
+python-dotenv>=1.0.0
+
+# WhatsApp bot
+flask>=3.0.0
+twilio>=9.0.0
+apscheduler>=3.10.0
+
+# Telegram bot
+python-telegram-bot>=20.0
+
+# Lectura de PDFs desde Drive
+pdfplumber>=0.10.0

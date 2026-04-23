@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p \"C:/Users/yessi/Desktop/agentes/campechano-app\")",
+      "Read(//c/Users/yessi/Desktop/agentes/**)",
+      "Bash(npm install *)",
+      "Bash(npx tsc *)",
+      "Bash(npx create-next-app@14 gran-via-panificados --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)",
+      "Bash(npx prisma *)",
+      "Bash(npx create-next-app@latest crecimiento-personal --typescript --tailwind --eslint --app --no-src-dir --import-alias \"@/*\" --yes)"
+    ]
+  }
+}

@@ -1,0 +1,25 @@
+# Credenciales y tokens — NUNCA subir estos archivos
+.env
+google_credentials.json
+google_drive_token.json
+google_token.json
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+
+# Archivos generados
+propuestas/
+reportes/
+*.pdf
+
+# VSCode
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
