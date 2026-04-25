@@ -23,8 +23,10 @@ from datetime import datetime
 from io import BytesIO
 
 import anthropic
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.cron import CronTrigger
 from dotenv import load_dotenv
-from telegram import Update
+from telegram import Update, Bot
 from telegram.constants import ChatAction
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -359,6 +361,16 @@ async def cmd_drive(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await update.message.reply_text(result[:4096])
 
 
+async def cmd_reporte(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Genera y manda el reporte del dia ahora mismo."""
+    user_id = update.effective_user.id
+    if not _is_allowed(user_id):
+        return
+    await update.message.reply_text("Generando reporte... un momento ⏳")
+    await update.message.chat.send_action(ChatAction.TYPING)
+    await enviar_reporte_diario(context.bot)
+
+
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_id = update.effective_user.id
 
@@ -459,6 +471,36 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await update.message.reply_text(reply[i:i+4096])
 
 
+# ── Reporte diario automatico ─────────────────────────────────────────────────
+
+async def enviar_reporte_diario(bot: Bot) -> None:
+    """Genera el reporte del dia y lo manda a todos los usuarios permitidos."""
+    from tools.mtm_report import generar_reporte
+
+    log.info("Generando reporte diario automatico...")
+    try:
+        loop = asyncio.get_event_loop()
+        texto = await loop.run_in_executor(None, generar_reporte)
+    except Exception as e:
+        log.error(f"Error generando reporte: {e}")
+        texto = f"⚠️ Error generando el reporte diario: {e}"
+
+    if not ALLOWED_USER_IDS:
+        log.warning("No hay usuarios configurados para recibir el reporte.")
+        return
+
+    for uid in ALLOWED_USER_IDS:
+        try:
+            if len(texto) <= 4096:
+                await bot.send_message(chat_id=uid, text=texto, parse_mode="Markdown")
+            else:
+                for i in range(0, len(texto), 4096):
+                    await bot.send_message(chat_id=uid, text=texto[i:i+4096], parse_mode="Markdown")
+            log.info(f"Reporte enviado a user_id={uid}")
+        except Exception as e:
+            log.error(f"Error enviando reporte a {uid}: {e}")
+
+
 # ── Entry point ────────────────────────────────────────────────────────────────
 
 def main():
@@ -480,11 +522,27 @@ def main():
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("clear", cmd_clear))
     app.add_handler(CommandHandler("drive", cmd_drive))
+    app.add_handler(CommandHandler("reporte", cmd_reporte))
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
+    # ── Scheduler: reporte diario a las 18:00 hora Argentina ──────────────────
+    scheduler = AsyncIOScheduler(timezone="America/Argentina/Buenos_Aires")
+    scheduler.add_job(
+        enviar_reporte_diario,
+        trigger=CronTrigger(hour=18, minute=0, timezone="America/Argentina/Buenos_Aires"),
+        args=[app.bot],
+        id="reporte_diario",
+        name="Reporte diario MTM",
+        replace_existing=True,
+    )
+    scheduler.start()
+    log.info("Scheduler activo — reporte diario a las 18:00 (Argentina)")
+
     log.info("Bot corriendo en modo polling. Ctrl+C para detener.")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
+
+    scheduler.shutdown()
 
 
 if __name__ == "__main__":
