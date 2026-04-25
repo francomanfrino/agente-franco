@@ -37,14 +37,24 @@ COL_PRODUCCION   = 14  # N
 COL_ACT_STOCK    = 15  # O
 
 
+MTM_FOLDER_ID = "1SzsXQnXEEw0BIue5DLipgLPtAgY996Sf"
+
+
 def _find_file(drive, name_contains: str, fecha_str: str) -> dict | None:
-    """Busca un archivo en Drive por nombre exacto del dia."""
-    query = f"name contains '{fecha_str}' and name contains '{name_contains}' and trashed = false"
+    """Busca un archivo en la carpeta MTM por nombre del dia."""
+    query = (
+        f"'{MTM_FOLDER_ID}' in parents and "
+        f"name contains '{fecha_str}' and "
+        f"name contains '{name_contains}' and "
+        f"trashed = false"
+    )
     result = drive.files().list(
         q=query,
         fields="files(id, name)",
         pageSize=5,
-        orderBy="modifiedTime desc"
+        orderBy="modifiedTime desc",
+        supportsAllDrives=True,
+        includeItemsFromAllDrives=True,
     ).execute()
     files = result.get("files", [])
     return files[0] if files else None
