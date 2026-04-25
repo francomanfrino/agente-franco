@@ -471,6 +471,29 @@ async def handle_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
             await update.message.reply_text(reply[i:i+4096])
 
 
+# ── Scheduler — hooks del ciclo de vida del bot ───────────────────────────────
+
+async def _on_startup(app: Application) -> None:
+    """Arranca el scheduler cuando el event loop ya esta corriendo."""
+    scheduler = AsyncIOScheduler(timezone="America/Argentina/Buenos_Aires")
+    scheduler.add_job(
+        enviar_reporte_diario,
+        trigger=CronTrigger(hour=18, minute=0, timezone="America/Argentina/Buenos_Aires"),
+        args=[app.bot],
+        id="reporte_diario",
+        replace_existing=True,
+    )
+    scheduler.start()
+    app.bot_data["scheduler"] = scheduler
+    log.info("Scheduler activo — reporte diario a las 18:00 (Argentina)")
+
+
+async def _on_shutdown(app: Application) -> None:
+    scheduler = app.bot_data.get("scheduler")
+    if scheduler:
+        scheduler.shutdown()
+
+
 # ── Reporte diario automatico ─────────────────────────────────────────────────
 
 async def enviar_reporte_diario(bot: Bot) -> None:
@@ -517,7 +540,13 @@ def main():
         log.warning("TELEGRAM_ALLOWED_USERS no configurado — el bot acepta mensajes de cualquier usuario.")
         log.warning("Agregá tu Telegram user ID en el .env para mayor seguridad.")
 
-    app = Application.builder().token(TELEGRAM_BOT_TOKEN).build()
+    app = (
+        Application.builder()
+        .token(TELEGRAM_BOT_TOKEN)
+        .post_init(_on_startup)
+        .post_shutdown(_on_shutdown)
+        .build()
+    )
 
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("clear", cmd_clear))
@@ -526,23 +555,8 @@ def main():
     app.add_handler(MessageHandler(filters.PHOTO, handle_photo))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # ── Scheduler: reporte diario a las 18:00 hora Argentina ──────────────────
-    scheduler = AsyncIOScheduler(timezone="America/Argentina/Buenos_Aires")
-    scheduler.add_job(
-        enviar_reporte_diario,
-        trigger=CronTrigger(hour=18, minute=0, timezone="America/Argentina/Buenos_Aires"),
-        args=[app.bot],
-        id="reporte_diario",
-        name="Reporte diario MTM",
-        replace_existing=True,
-    )
-    scheduler.start()
-    log.info("Scheduler activo — reporte diario a las 18:00 (Argentina)")
-
     log.info("Bot corriendo en modo polling. Ctrl+C para detener.")
     app.run_polling(allowed_updates=Update.ALL_TYPES)
-
-    scheduler.shutdown()
 
 
 if __name__ == "__main__":
