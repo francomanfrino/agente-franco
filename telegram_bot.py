@@ -362,14 +362,25 @@ async def cmd_drive(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def cmd_reporte(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Genera y manda el reporte del dia ahora mismo."""
+    """Genera y manda el reporte. Uso: /reporte o /reporte 24-04-2026"""
     user_id = update.effective_user.id
     if not _is_allowed(user_id):
         return
-    await update.message.reply_text("Generando reporte... un momento ⏳")
+
+    from datetime import date
+    fecha = None
+    if context.args:
+        try:
+            fecha = datetime.strptime(context.args[0], "%d-%m-%Y").date()
+        except ValueError:
+            await update.message.reply_text("Formato de fecha incorrecto. Usá: /reporte 24-04-2026")
+            return
+    else:
+        fecha = date.today()
+
+    await update.message.reply_text(f"Generando reporte del {fecha.strftime('%d/%m/%Y')}... un momento ⏳")
     await update.message.chat.send_action(ChatAction.TYPING)
-    # Corre en background para no bloquear el bot
-    asyncio.create_task(enviar_reporte_diario(context.bot))
+    asyncio.create_task(enviar_reporte_diario(context.bot, fecha))
 
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -509,21 +520,24 @@ async def _send_text(bot: Bot, uid: int, texto: str) -> None:
         log.error(f"Error enviando mensaje a {uid}: {e}")
 
 
-async def enviar_reporte_diario(bot: Bot) -> None:
-    """Genera el reporte del dia en dos partes y lo manda a todos los usuarios."""
+async def enviar_reporte_diario(bot: Bot, fecha=None) -> None:
+    """Genera el reporte en dos partes y lo manda a todos los usuarios."""
     from tools.mtm_report import generar_reporte_excel
     from tools.sqlite_report import analizar_sistema, formatear_seccion_sistema
+    from datetime import date as date_type
+
+    if fecha is None:
+        fecha = date_type.today()
 
     if not ALLOWED_USER_IDS:
         log.warning("No hay usuarios configurados para recibir el reporte.")
         return
 
-    log.info("Generando reporte diario — parte 1 (Excel)...")
+    loop = asyncio.get_event_loop()
 
-    # ── Parte 1: Excel (rapido, ~10 seg) ──────────────────────────────────────
+    # ── Parte 1: Excel (rapido) ────────────────────────────────────────────────
     try:
-        loop = asyncio.get_event_loop()
-        texto_excel = await loop.run_in_executor(None, generar_reporte_excel)
+        texto_excel = await loop.run_in_executor(None, generar_reporte_excel, fecha)
     except Exception as e:
         log.error(f"Error generando reporte Excel: {e}")
         texto_excel = f"⚠️ Error generando reporte: {e}"
@@ -531,17 +545,10 @@ async def enviar_reporte_diario(bot: Bot) -> None:
     for uid in ALLOWED_USER_IDS:
         await _send_text(bot, uid, texto_excel)
 
-    # ── Parte 2: SQLite (puede tardar, se manda cuando esta listo) ─────────────
-    log.info("Generando reporte diario — parte 2 (Sistema)...")
+    # ── Parte 2: SQLite ────────────────────────────────────────────────────────
     try:
-        from datetime import date
-        datos_sistema = await loop.run_in_executor(None, analizar_sistema, date.today())
-        from tools.mtm_report import _fmt
-
-        lineas = formatear_seccion_sistema(datos_sistema)
-
-        # Reconciliacion si tenemos datos del excel
-        texto_sistema = "\n".join(lineas)
+        datos_sistema = await loop.run_in_executor(None, analizar_sistema, fecha)
+        texto_sistema = "\n".join(formatear_seccion_sistema(datos_sistema))
     except Exception as e:
         log.error(f"Error generando datos del sistema: {e}")
         texto_sistema = f"⚠️ Error leyendo sistema de gestión: {e}"
@@ -549,7 +556,7 @@ async def enviar_reporte_diario(bot: Bot) -> None:
     for uid in ALLOWED_USER_IDS:
         await _send_text(bot, uid, texto_sistema)
 
-    log.info("Reporte diario completo enviado.")
+    log.info("Reporte completo enviado.")
 
 
 # ── Entry point ────────────────────────────────────────────────────────────────
