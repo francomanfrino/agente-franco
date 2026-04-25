@@ -456,3 +456,118 @@ def generar_reporte(fecha: date = None) -> str:
     lineas.append(f"\n_Generado automaticamente a las {datetime.now().strftime('%H:%M')}_")
 
     return "\n".join(lineas)
+
+
+def generar_reporte_excel(fecha: date = None) -> str:
+    """
+    Version rapida del reporte — solo lee el CONTROL DIARIO de Drive.
+    Sin SQLite. Retorna en ~10-20 segundos.
+    """
+    if fecha is None:
+        fecha = date.today()
+
+    fecha_str = fecha.strftime("%d-%m-%Y")
+    fecha_display = fecha.strftime("%d/%m/%Y")
+
+    drive = build("drive", "v3", credentials=_get_credentials())
+    control_file = _find_file(drive, "CONTROL DIARIO", fecha_str)
+
+    lineas = [f"📊 *Reporte MTM — {fecha_display}*\n"]
+
+    if not control_file:
+        return f"📊 Reporte MTM — {fecha_display}\n\nNo se encontro el archivo CONTROL DIARIO del dia."
+
+    ex: dict = {}
+
+    try:
+        wb_control = _download_excel(drive, control_file["id"])
+        ws = None
+        for sheet_name in wb_control.sheetnames:
+            s = wb_control[sheet_name]
+            header = s.cell(1, 1).value
+            if header and "FECHA" in str(header).upper():
+                ws = s
+                break
+        if ws is None:
+            ws = wb_control.active
+
+        fila = _get_control_diario_row(ws, fecha)
+
+        if fila:
+            ex["diferencia"]  = fila[COL_DIFERENCIA  - 1]
+            ex["resultado"]   = fila[COL_RESULTADO    - 1]
+            ex["caja"]        = fila[COL_TOTAL_CAJA   - 1]
+            ex["clientes"]    = fila[COL_CLIENTES     - 1]
+            ex["stock"]       = fila[COL_STOCK        - 1]
+            ex["proveedores"] = fila[COL_TA_CTE_PROV  - 1]
+            ex["gan_mtm"]     = fila[COL_GAN_MTM      - 1]
+            ex["gastos"]      = fila[COL_GASTOS       - 1]
+            ex["transportes"] = fila[COL_TRANSPORTES  - 1]
+
+            try:
+                dif_val = float(ex["diferencia"]) if ex["diferencia"] else 0
+                lineas.append("✅ *Control cruzado:* CIERRA PERFECTO" if abs(dif_val) < 1
+                              else f"⚠️ *Control cruzado:* DIFERENCIA de {_fmt(dif_val)}")
+            except (TypeError, ValueError):
+                lineas.append("❓ *Control cruzado:* No se pudo leer")
+
+            lineas.append(f"\n💰 *Resultado del dia:* {_fmt(ex['resultado'])}")
+            lineas.append(f"🏦 *Total Caja:* {_fmt(ex['caja'])}")
+            lineas.append(f"👥 *Clientes (CxC):* {_fmt(ex['clientes'])}")
+            lineas.append(f"📦 *Stock valorizado:* {_fmt(ex['stock'])}")
+            lineas.append(f"🏭 *Proveedores (CxP):* {_fmt(ex['proveedores'])}")
+            lineas.append(f"\n📈 *Ganancia MTM:* {_fmt(ex['gan_mtm'])}")
+            lineas.append(f"📉 *Gastos:* {_fmt(ex['gastos'])}")
+            lineas.append(f"🚛 *Transportes:* {_fmt(ex['transportes'])}")
+        else:
+            lineas.append("⚠️ No se encontro la fila del dia en CONTROL DIARIO")
+
+    except Exception as e:
+        log.error(f"Error leyendo CONTROL DIARIO: {e}")
+        lineas.append(f"⚠️ Error leyendo CONTROL DIARIO: {e}")
+
+    # Analisis financiero solo con datos del Excel
+    if ex:
+        try:
+            caja_v        = float(ex.get("caja")        or 0)
+            clientes_v    = float(ex.get("clientes")    or 0)
+            stock_v       = float(ex.get("stock")       or 0)
+            proveedores_v = float(ex.get("proveedores") or 0)
+            resultado_v   = float(ex.get("resultado")   or 0)
+            gan_mtm_v     = float(ex.get("gan_mtm")     or 0)
+            gastos_v      = float(ex.get("gastos")      or 0)
+            transportes_v = float(ex.get("transportes") or 0)
+
+            lineas.append(f"\n📐 *Análisis Financiero*")
+
+            if proveedores_v > 0:
+                ratio_cob = (caja_v + clientes_v) / proveedores_v
+                icon = "✅" if ratio_cob >= 1.0 else ("⚠️" if ratio_cob >= 0.7 else "❌")
+                lineas.append(f"  {icon} Cobertura deuda: {ratio_cob:.2f}x  (Caja+CxC / CxP)")
+
+            activo_total = caja_v + clientes_v + stock_v
+            if activo_total > 0:
+                lineas.append(
+                    f"  📊 Activos: Caja {caja_v/activo_total*100:.0f}% | "
+                    f"CxC {clientes_v/activo_total*100:.0f}% | "
+                    f"Stock {stock_v/activo_total*100:.0f}%"
+                )
+
+            total_egresos = gastos_v + transportes_v
+            if gan_mtm_v > 0:
+                ratio_gastos = total_egresos / gan_mtm_v * 100
+                icon = "✅" if ratio_gastos < 30 else ("⚠️" if ratio_gastos < 60 else "❌")
+                lineas.append(f"  {icon} Gastos+Fletes / Ganancia: {ratio_gastos:.0f}%")
+
+            lineas.append(f"  {'✅' if resultado_v >= 0 else '❌'} Resultado: {_fmt(resultado_v)}")
+
+            if caja_v < proveedores_v * 0.3:
+                lineas.append(f"  🚨 *ALERTA LIQUIDEZ:* Caja {_fmt(caja_v)} muy baja vs deuda {_fmt(proveedores_v)}")
+            if clientes_v > proveedores_v * 2:
+                lineas.append(f"  ⚠️ Alta exposicion clientes: CxC {_fmt(clientes_v)} vs CxP {_fmt(proveedores_v)}")
+
+        except Exception as e:
+            log.error(f"Error en analisis financiero: {e}")
+
+    lineas.append(f"\n_Generado a las {datetime.now().strftime('%H:%M')} — datos del sistema en camino..._")
+    return "\n".join(lineas)
