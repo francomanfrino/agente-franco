@@ -15,3 +15,6 @@ python-telegram-bot>=20.0
 
 # Lectura de PDFs desde Drive
 pdfplumber>=0.10.0
+
+# Lectura de archivos Excel
+openpyxl>=3.1.0
