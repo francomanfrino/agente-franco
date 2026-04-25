@@ -120,10 +120,13 @@ def analizar_sistema(fecha: date = None) -> dict:
         EXCLUIR_CAT = ["banco", "transport", "alquil", "impuest", "retenci"]
         gastos_alertas = []
         total_gastos = 0
+        total_transportes = 0
         for g in gastos:
             monto = float(g["monto"] or 0)
             total_gastos += monto
             cat = (g["categoria"] or "").lower()
+            if "transport" in cat:
+                total_transportes += monto
             if monto > 30_000_000 and not any(kw in cat for kw in EXCLUIR_CAT):
                 gastos_alertas.append({
                     "descripcion": g["descripcion"] or g["categoria"] or "Sin descripcion",
@@ -131,9 +134,10 @@ def analizar_sistema(fecha: date = None) -> dict:
                     "categoria":   g["categoria"] or "Sin categoria",
                 })
 
-        resultado["gastos_total"]   = total_gastos
-        resultado["gastos_alertas"] = gastos_alertas
-        resultado["gastos_count"]   = len(gastos)
+        resultado["gastos_total"]       = total_gastos
+        resultado["transportes_total"]  = total_transportes
+        resultado["gastos_alertas"]     = gastos_alertas
+        resultado["gastos_count"]       = len(gastos)
 
         # ── Cajas ──────────────────────────────────────────────────────────────
         cur.execute("SELECT nombre, saldo_actual, tipo FROM cajas ORDER BY saldo_actual DESC")

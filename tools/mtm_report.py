@@ -278,108 +278,180 @@ def generar_reporte(fecha: date = None) -> str:
 
     drive = build("drive", "v3", credentials=_get_credentials())
 
-    # Buscar archivos del dia
     control_file = _find_file(drive, "CONTROL DIARIO", fecha_str)
-    mtm_file     = _find_file(drive, "MTM PILAR", fecha_str)
 
     lineas = [f"📊 *Reporte MTM — {fecha_display}*\n"]
 
-    if not control_file and not mtm_file:
-        return f"📊 Reporte MTM — {fecha_display}\n\nNo se encontraron archivos para el dia de hoy."
+    if not control_file:
+        return f"📊 Reporte MTM — {fecha_display}\n\nNo se encontro el archivo CONTROL DIARIO del dia."
+
+    # Variables del Excel — se populan si la lectura tiene exito
+    ex: dict = {}
 
     # ── CONTROL DIARIO ────────────────────────────────────────────────────────
-    if control_file:
-        try:
-            wb_control = _download_excel(drive, control_file["id"])
+    try:
+        wb_control = _download_excel(drive, control_file["id"])
 
-            # Buscar la hoja correcta (la que tiene FECHA en la primera columna)
-            ws = None
-            for sheet_name in wb_control.sheetnames:
-                s = wb_control[sheet_name]
-                header = s.cell(1, 1).value
-                if header and "FECHA" in str(header).upper():
-                    ws = s
-                    break
-            if ws is None:
-                ws = wb_control.active
+        ws = None
+        for sheet_name in wb_control.sheetnames:
+            s = wb_control[sheet_name]
+            header = s.cell(1, 1).value
+            if header and "FECHA" in str(header).upper():
+                ws = s
+                break
+        if ws is None:
+            ws = wb_control.active
 
-            fila = _get_control_diario_row(ws, fecha)
+        fila = _get_control_diario_row(ws, fecha)
 
-            if fila:
-                diferencia  = fila[COL_DIFERENCIA  - 1]
-                resultado   = fila[COL_RESULTADO    - 1]
-                caja        = fila[COL_TOTAL_CAJA   - 1]
-                clientes    = fila[COL_CLIENTES     - 1]
-                stock       = fila[COL_STOCK        - 1]
-                proveedores = fila[COL_TA_CTE_PROV  - 1]
-                gan_mtm     = fila[COL_GAN_MTM      - 1]
-                gastos      = fila[COL_GASTOS       - 1]
-                transportes = fila[COL_TRANSPORTES  - 1]
+        if fila:
+            ex["diferencia"]  = fila[COL_DIFERENCIA  - 1]
+            ex["resultado"]   = fila[COL_RESULTADO    - 1]
+            ex["caja"]        = fila[COL_TOTAL_CAJA   - 1]
+            ex["clientes"]    = fila[COL_CLIENTES     - 1]
+            ex["stock"]       = fila[COL_STOCK        - 1]
+            ex["proveedores"] = fila[COL_TA_CTE_PROV  - 1]
+            ex["gan_mtm"]     = fila[COL_GAN_MTM      - 1]
+            ex["gastos"]      = fila[COL_GASTOS       - 1]
+            ex["transportes"] = fila[COL_TRANSPORTES  - 1]
 
-                # Control cruzado
-                try:
-                    dif_val = float(diferencia) if diferencia else 0
-                    if abs(dif_val) < 1:
-                        lineas.append("✅ *Control cruzado:* CIERRA PERFECTO")
-                    else:
-                        lineas.append(f"⚠️ *Control cruzado:* DIFERENCIA de {_fmt(dif_val)}")
-                except (TypeError, ValueError):
-                    lineas.append("❓ *Control cruzado:* No se pudo leer")
+            try:
+                dif_val = float(ex["diferencia"]) if ex["diferencia"] else 0
+                if abs(dif_val) < 1:
+                    lineas.append("✅ *Control cruzado:* CIERRA PERFECTO")
+                else:
+                    lineas.append(f"⚠️ *Control cruzado:* DIFERENCIA de {_fmt(dif_val)}")
+            except (TypeError, ValueError):
+                lineas.append("❓ *Control cruzado:* No se pudo leer")
 
-                lineas.append(f"\n💰 *Resultado del dia:* {_fmt(resultado)}")
-                lineas.append(f"🏦 *Total Caja:* {_fmt(caja)}")
-                lineas.append(f"👥 *Clientes (CxC):* {_fmt(clientes)}")
-                lineas.append(f"📦 *Stock valorizado:* {_fmt(stock)}")
-                lineas.append(f"🏭 *Proveedores (CxP):* {_fmt(proveedores)}")
-                lineas.append(f"\n📈 *Ganancia MTM:* {_fmt(gan_mtm)}")
-                lineas.append(f"📉 *Gastos:* {_fmt(gastos)}")
-                lineas.append(f"🚛 *Transportes:* {_fmt(transportes)}")
-            else:
-                lineas.append("⚠️ No se encontro la fila del dia en CONTROL DIARIO")
+            lineas.append(f"\n💰 *Resultado del dia:* {_fmt(ex['resultado'])}")
+            lineas.append(f"🏦 *Total Caja:* {_fmt(ex['caja'])}")
+            lineas.append(f"👥 *Clientes (CxC):* {_fmt(ex['clientes'])}")
+            lineas.append(f"📦 *Stock valorizado:* {_fmt(ex['stock'])}")
+            lineas.append(f"🏭 *Proveedores (CxP):* {_fmt(ex['proveedores'])}")
+            lineas.append(f"\n📈 *Ganancia MTM:* {_fmt(ex['gan_mtm'])}")
+            lineas.append(f"📉 *Gastos:* {_fmt(ex['gastos'])}")
+            lineas.append(f"🚛 *Transportes:* {_fmt(ex['transportes'])}")
+        else:
+            lineas.append("⚠️ No se encontro la fila del dia en CONTROL DIARIO")
 
-        except Exception as e:
-            log.error(f"Error leyendo CONTROL DIARIO: {e}")
-            lineas.append(f"⚠️ Error leyendo CONTROL DIARIO: {e}")
-    else:
-        lineas.append("⚠️ No se encontro el archivo CONTROL DIARIO del dia")
-
-    # ── MTM PILAR ─────────────────────────────────────────────────────────────
-    if mtm_file:
-        try:
-            wb_mtm = _download_excel(drive, mtm_file["id"])
-            datos_mtm = _analizar_mtm_pilar(wb_mtm, fecha)
-
-            lineas.append(f"\n📋 *Ventas del dia:* {datos_mtm['total_ventas']} operaciones")
-            lineas.append(f"💵 *Ganancia total:* {_fmt(datos_mtm['total_ganancia'])}")
-
-            # Camiones completos
-            if datos_mtm["camiones_completos"]:
-                lineas.append(f"\n🚛 *Camiones completos ({len(datos_mtm['camiones_completos'])}):*")
-                for c in datos_mtm["camiones_completos"][:5]:
-                    lineas.append(f"  • {c['cliente']} — {c['producto'][:30]} ({c['cantidad']:,} u) → {_fmt(c['ganancia'])}")
-            else:
-                lineas.append("\n🚛 *Camiones completos:* Ninguno")
-
-            # Margenes bajos
-            if datos_mtm["ventas_margen_bajo"]:
-                lineas.append(f"\n⚠️ *Ventas con margen bajo (<5%):*")
-                for v in datos_mtm["ventas_margen_bajo"][:5]:
-                    lineas.append(f"  • {v['cliente']} — margen {_pct(v['margen'])}")
-
-        except Exception as e:
-            log.error(f"Error leyendo MTM PILAR: {e}")
-            lineas.append(f"\n⚠️ Error leyendo MTM PILAR: {e}")
-    else:
-        lineas.append("\n⚠️ No se encontro el archivo MTM PILAR del dia")
+    except Exception as e:
+        log.error(f"Error leyendo CONTROL DIARIO: {e}")
+        lineas.append(f"⚠️ Error leyendo CONTROL DIARIO: {e}")
 
     # ── SISTEMA DE GESTIÓN (SQLite) ───────────────────────────────────────────
+    datos_sistema = None
     try:
-        from tools.sqlite_report import analizar_sistema, formatear_seccion_sistema
+        from tools.sqlite_report import analizar_sistema
         datos_sistema = analizar_sistema(fecha)
-        lineas.extend(formatear_seccion_sistema(datos_sistema))
+
+        lineas.append(f"\n🖥️ *Sistema de Gestión*")
+        lineas.append(f"📦 Ventas: {datos_sistema['ventas_count']} | Total: {_fmt(datos_sistema['ventas_total'])}")
+        lineas.append(f"💸 Gastos: {datos_sistema['gastos_count']} | Total: {_fmt(datos_sistema['gastos_total'])}")
+
+        cajas_top = sorted(datos_sistema["cajas"], key=lambda x: abs(x["saldo"]), reverse=True)[:3]
+        if cajas_top:
+            lineas.append(f"\n🏦 *Cajas principales:*")
+            for c in cajas_top:
+                lineas.append(f"  • {c['nombre']}: {_fmt(c['saldo'])}")
+            lineas.append(f"  *Total: {_fmt(datos_sistema['cajas_total'])}*")
+
+        if datos_sistema["camiones_completos"]:
+            lineas.append(f"\n🚛 *Camiones completos ({len(datos_sistema['camiones_completos'])}):*")
+            for c in datos_sistema["camiones_completos"][:5]:
+                lineas.append(f"  • {c['producto'][:35]} — {c['cantidad']:,} u → {_fmt(c['total'])}")
+        else:
+            lineas.append("\n🚛 *Camiones completos:* Ninguno")
+
+        if datos_sistema["pedidos"]:
+            lineas.append(f"\n📋 *Pedidos del día:*")
+            for estado, count in datos_sistema["pedidos"].items():
+                lineas.append(f"  • {estado}: {count}")
+
+        if datos_sistema["gastos_alertas"]:
+            lineas.append(f"\n⚠️ *Gastos inusuales (>$30M):*")
+            for g in datos_sistema["gastos_alertas"][:5]:
+                lineas.append(f"  • {g['descripcion'][:50]} — {_fmt(g['monto'])} ({g['categoria']})")
+
     except Exception as e:
         log.error(f"Error leyendo SQLite: {e}")
         lineas.append(f"\n⚠️ Error leyendo datos del sistema: {e}")
+
+    # ── RECONCILIACIÓN Excel vs SQLite ────────────────────────────────────────
+    if ex and datos_sistema:
+        try:
+            lineas.append(f"\n🔍 *Reconciliación Excel vs Sistema*")
+
+            def _rec(label, excel_val, sqlite_val, umbral_pct=0.02):
+                try:
+                    e = float(excel_val or 0)
+                    s = float(sqlite_val or 0)
+                    if e == 0 and s == 0:
+                        return f"  ➖ {label}: sin datos en ambos"
+                    base = max(abs(e), abs(s), 1)
+                    diff = abs(e - s) / base
+                    icon = "✅" if diff < umbral_pct else ("⚠️" if diff < 0.10 else "❌")
+                    return f"  {icon} {label}: Excel {_fmt(e)} | Sistema {_fmt(s)} | Dif {_fmt(e - s)}"
+                except Exception:
+                    return f"  ❓ {label}: no se pudo comparar"
+
+            lineas.append(_rec("Gastos",      ex.get("gastos"),      datos_sistema["gastos_total"]))
+            lineas.append(_rec("Transportes", ex.get("transportes"), datos_sistema["transportes_total"]))
+            lineas.append(_rec("Total caja",  ex.get("caja"),        datos_sistema["cajas_total"]))
+
+        except Exception as e:
+            log.error(f"Error en reconciliacion: {e}")
+
+    # ── ANÁLISIS FINANCIERO ───────────────────────────────────────────────────
+    if ex:
+        try:
+            lineas.append(f"\n📐 *Análisis Financiero*")
+
+            caja_v        = float(ex.get("caja")        or 0)
+            clientes_v    = float(ex.get("clientes")    or 0)
+            stock_v       = float(ex.get("stock")       or 0)
+            proveedores_v = float(ex.get("proveedores") or 0)
+            resultado_v   = float(ex.get("resultado")   or 0)
+            gan_mtm_v     = float(ex.get("gan_mtm")     or 0)
+            gastos_v      = float(ex.get("gastos")      or 0)
+            transportes_v = float(ex.get("transportes") or 0)
+
+            # Cobertura de deuda: (Caja + CxC) / CxP
+            if proveedores_v > 0:
+                ratio_cob = (caja_v + clientes_v) / proveedores_v
+                icon = "✅" if ratio_cob >= 1.0 else ("⚠️" if ratio_cob >= 0.7 else "❌")
+                lineas.append(f"  {icon} Cobertura deuda: {ratio_cob:.2f}x  (Caja+CxC / CxP)")
+
+            # Estructura de activos
+            activo_total = caja_v + clientes_v + stock_v
+            if activo_total > 0:
+                lineas.append(
+                    f"  📊 Activos: Caja {caja_v/activo_total*100:.0f}% | "
+                    f"CxC {clientes_v/activo_total*100:.0f}% | "
+                    f"Stock {stock_v/activo_total*100:.0f}%"
+                )
+
+            # Gastos como % de la ganancia
+            total_egresos = gastos_v + transportes_v
+            if gan_mtm_v > 0:
+                ratio_gastos = total_egresos / gan_mtm_v * 100
+                icon = "✅" if ratio_gastos < 30 else ("⚠️" if ratio_gastos < 60 else "❌")
+                lineas.append(f"  {icon} Gastos+Fletes / Ganancia: {ratio_gastos:.0f}%")
+
+            # Resultado del dia
+            if resultado_v >= 0:
+                lineas.append(f"  ✅ Resultado del dia: {_fmt(resultado_v)}")
+            else:
+                lineas.append(f"  ❌ Resultado NEGATIVO: {_fmt(resultado_v)}")
+
+            # Alertas
+            if caja_v < proveedores_v * 0.3:
+                lineas.append(f"  🚨 *ALERTA LIQUIDEZ:* Caja {_fmt(caja_v)} muy baja vs deuda {_fmt(proveedores_v)}")
+            if clientes_v > proveedores_v * 2:
+                lineas.append(f"  ⚠️ Alta exposicion clientes: CxC {_fmt(clientes_v)} vs CxP {_fmt(proveedores_v)}")
+
+        except Exception as e:
+            log.error(f"Error en analisis financiero: {e}")
 
     lineas.append(f"\n_Generado automaticamente a las {datetime.now().strftime('%H:%M')}_")
 
