@@ -310,10 +310,50 @@ def _export_or_download(drive, file_id: str, name: str, mime: str) -> str:
     if mime == "application/pdf":
         return _read_pdf_from_drive(drive, file_id, name)
 
+    # Excel (.xlsx / .xlsm): leer con openpyxl
+    if mime in (
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel.sheet.macroEnabled.12",
+        "application/vnd.ms-excel",
+    ) or name.endswith((".xlsx", ".xlsm", ".xls")):
+        return _read_excel_from_drive(drive, file_id, name)
+
     return (
         f"Tipo de archivo no soportado para lectura directa: {mime}\n"
         f"Podes exportarlo manualmente o convertirlo a Google Docs."
     )
+
+
+def _read_excel_from_drive(drive, file_id: str, name: str) -> str:
+    try:
+        import openpyxl
+    except ImportError:
+        return "No se puede leer Excel: falta la libreria 'openpyxl'."
+
+    request = drive.files().get_media(fileId=file_id)
+    buf = io.BytesIO()
+    downloader = MediaIoBaseDownload(buf, request)
+    done = False
+    while not done:
+        _, done = downloader.next_chunk()
+
+    buf.seek(0)
+    try:
+        wb = openpyxl.load_workbook(buf, data_only=True, keep_vba=False)
+    except Exception as e:
+        return f"Error abriendo el Excel: {e}"
+
+    sections = []
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+        rows_data = []
+        for row in ws.iter_rows(values_only=True):
+            if any(cell is not None for cell in row):
+                rows_data.append("\t".join("" if c is None else str(c) for c in row))
+        if rows_data:
+            sections.append(f"=== Hoja: {sheet_name} ===\n" + "\n".join(rows_data[:200]))
+
+    return "\n\n".join(sections) if sections else "(Excel sin datos)"
 
 
 def _read_pdf_from_drive(drive, file_id: str, name: str) -> str:
